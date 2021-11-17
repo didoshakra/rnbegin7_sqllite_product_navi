@@ -1,6 +1,5 @@
-//app.js https://reactnativecode.com/insert-data-into-sqlite-database-in-react-native/
-//Insert Data Into SQLite//SchoolDatabase.db'+'Student_Table'
 import React, {useState, useEffect} from 'react';
+
 import {
   SafeAreaView,
   Text,
@@ -9,25 +8,223 @@ import {
   Alert,
   TouchableOpacity,
   TextInput,
+  FlatList,
 } from 'react-native';
-
+import {useIsFocused} from '@react-navigation/native';
 import {openDatabase} from 'react-native-sqlite-storage';
-export var db = openDatabase({name: 'SchoolDatabase.db'});
 
-const App = () => {
-  const [S_Name, setName] = useState('');
-  const [S_Phone, setPhone] = useState();
-  const [S_Address, setAddress] = useState('');
-  const [students, setStudents] = useState([]);
-  const [students1, setStudents1] = useState([]);
-  const [students2, setStudents2] = useState([]);
+var db = openDatabase({name: 'SchoolDatabase.db'});
+
+export function ViewAllStudentScreen({navigation}) {
+  const [items, setItems] = useState([]); //Масив з запиту
+  const [empty, setEmpty] = useState([]); // Чи не пустий Select
+
+  const isFocused = useIsFocused();
 
   useEffect(() => {
-    createTable();
-    loadStudentList();
+    db.transaction(tx => {
+      tx.executeSql('SELECT * FROM Student_Table', [], (tx, results) => {
+        var temp = [];
+        for (let i = 0; i < results.rows.length; ++i)
+          temp.push(results.rows.item(i));
+        setItems(temp);
+
+        if (results.rows.length >= 1) {
+          setEmpty(false);
+        } else {
+          setEmpty(true);
+        }
+      });
+    });
+    //За замовчуванням ефекти спрацьовуються після кожного завершеного рендеру
+    // Якщо є 2-й параметр [props.source], буде спрацьовувати тільки при зміні цих параметрів
+  }, [isFocused]);
+
+  const listViewItemSeparator = () => {
+    return (
+      <View
+        style={{
+          height: 1,
+          width: '100%',
+          backgroundColor: '#000',
+        }}
+      />
+    );
+  };
+
+  const emptyMSG = status => {
+    return (
+      <View style={{justifyContent: 'center', alignItems: 'center', flex: 1}}>
+        <Text style={{fontSize: 25, textAlign: 'center'}}>
+          No Record Inserted Database is Empty.../Немає вставлених записів База
+          даних порожня...
+        </Text>
+      </View>
+    );
+  };
+
+  const navigateToEditScreen = (id, name, phoneNumber, address) => {
+    navigation.navigate('EditRecordScreen', {
+      student_id: id,
+      student_name: name,
+      student_phone: phoneNumber,
+      student_address: address,
+    });
+  };
+
+  return (
+    <SafeAreaView style={{flex: 1}}>
+      <View style={{flex: 1}}>
+        {empty ? (
+          emptyMSG(empty)
+        ) : (
+          <FlatList
+            data={items}
+            ItemSeparatorComponent={listViewItemSeparator}
+            keyExtractor={(item, index) => index.toString()}
+            renderItem={({item}) => (
+              <View key={item.student_id} style={{padding: 20}}>
+                <TouchableOpacity
+                  onPress={() =>
+                    navigateToEditScreen(
+                      item.student_id,
+                      item.student_name,
+                      item.student_phone,
+                      item.student_address,
+                    )
+                  }>
+                  <Text style={styles.itemsStyle}> Id: {item.student_id} </Text>
+                  <Text style={styles.itemsStyle}>
+                    {' '}
+                    Name: {item.student_name}{' '}
+                  </Text>
+                  <Text style={styles.itemsStyle}>
+                    {' '}
+                    Phone Number: {item.student_phone}{' '}
+                  </Text>
+                  <Text style={styles.itemsStyle}>
+                    {' '}
+                    Address: {item.student_address}{' '}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          />
+        )}
+      </View>
+    </SafeAreaView>
+  );
+}
+
+export function EditRecordScreen({route, navigation}) {
+  const [S_Id, setID] = useState('');
+  const [S_Name, setName] = useState('');
+  const [S_Phone, setPhone] = useState('0');
+  const [S_Address, setAddress] = useState('');
+
+  useEffect(() => {
+    setID(route.params.student_id);
+    setName(route.params.student_name);
+    setPhone(route.params.student_phone.toString());
+    setAddress(route.params.student_address);
   }, []);
 
-  const createTable = () => {
+  const editData = () => {
+    db.transaction(tx => {
+      tx.executeSql(
+        'UPDATE Student_Table set student_name=?, student_phone=? , student_address=? where student_id=?',
+        [S_Name, S_Phone, S_Address, S_Id],
+        (tx, results) => {
+          console.log('Results', results.rowsAffected);
+          if (results.rowsAffected > 0) {
+            Alert.alert('Record Updated Successfully...');
+          } else Alert.alert('Error');
+        },
+      );
+    });
+  };
+
+  const deleteRecord = () => {
+    db.transaction(tx => {
+      tx.executeSql(
+        'DELETE FROM Student_Table where student_id=?',
+        [S_Id],
+        // [1],
+        (tx, results) => {
+          console.log('Results', results.rowsAffected);
+          if (results.rowsAffected > 0) {
+            Alert.alert(
+              'Done',
+              'Record Deleted Successfully',
+              [
+                {
+                  text: 'Ok',
+                  onPress: () => navigation.navigate('ViewAllStudentScreen'),
+                },
+              ],
+              {cancelable: false},
+            );
+          }
+        },
+      );
+    });
+  };
+
+  return (
+    <SafeAreaView style={{flex: 1}}>
+      <View style={styles.mainContainer}>
+        <Text style={{fontSize: 24, textAlign: 'center', color: '#000'}}>
+          Edit Record In SQLite Database
+        </Text>
+
+        <TextInput
+          style={styles.textInputStyle}
+          onChangeText={text => setName(text)}
+          placeholder="Enter Student Name"
+          value={S_Name}
+        />
+
+        <TextInput
+          style={styles.textInputStyle}
+          onChangeText={text => setPhone(text)}
+          placeholder="Enter Student Phone Number"
+          keyboardType={'numeric'}
+          value={S_Phone}
+        />
+
+        <TextInput
+          style={[styles.textInputStyle, {marginBottom: 20}]}
+          onChangeText={text => setAddress(text)}
+          placeholder="Enter Student Address"
+          value={S_Address}
+        />
+
+        <TouchableOpacity style={styles.touchableOpacity} onPress={editData}>
+          <Text style={styles.touchableOpacityText}> Edit Record </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.touchableOpacity,
+            {marginTop: 20, backgroundColor: '#33691E'},
+          ]}
+          onPress={deleteRecord}>
+          <Text style={styles.touchableOpacityText}>
+            {' '}
+            Delete Current Record{' '}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
+  );
+}
+
+export default function StudentScreen({navigation}) {
+  const [S_Name, setName] = useState('');
+  const [S_Phone, setPhone] = useState('0');
+  const [S_Address, setAddress] = useState('');
+
+  useEffect(() => {
     db.transaction(function (txn) {
       txn.executeSql(
         "SELECT name FROM sqlite_master WHERE type='table' AND name='Student_Table'",
@@ -44,79 +241,36 @@ const App = () => {
         },
       );
     });
-    // Alert.alert('SQLite Database and Table Successfully Created...');
-  };
+  }, []);
 
   const insertData = () => {
-    db.transaction(function (tx) {
-      tx.executeSql(
-        'INSERT INTO Student_Table (student_name, student_phone, student_address) VALUES (?,?,?)',
-        [S_Name, S_Phone, S_Address],
-        (tx, results) => {
-          console.log('Results', results.rowsAffected);
-          if (results.rowsAffected > 0) {
-            Alert.alert('Data Inserted Successfully....');
-          } else Alert.alert('Failed....');
-        },
-      );
-    });
-
-    viewStudent();
-  };
-
-  //Відображення даних
-  const viewStudent = () => {
-    db.transaction(tx => {
-      tx.executeSql('SELECT * FROM Student_Table', [], (tx, results) => {
-        var temp = [];
-        for (let i = 0; i < results.rows.length; ++i)
-          temp.push(results.rows.item(i));
-        console.log(temp);
+    if (S_Name == '' || S_Phone == '' || S_Address == '') {
+      Alert.alert('Please Enter All the Values');
+    } else {
+      db.transaction(function (tx) {
+        tx.executeSql(
+          'INSERT INTO Student_Table (student_name, student_phone, student_address) VALUES (?,?,?)',
+          [S_Name, S_Phone, S_Address],
+          (tx, results) => {
+            console.log('Results', results.rowsAffected);
+            if (results.rowsAffected > 0) {
+              Alert.alert('Data Inserted Successfully....');
+            } else Alert.alert('Failed....');
+          },
+        );
       });
-    });
+    }
   };
 
-  //Вибірка даних
-  const loadStudentList = () => {
-    db.transaction(tx => {
-      tx.executeSql('SELECT * FROM Student_Table', [], (tx, results) => {
-        var temp = [];
-        for (let i = 0; i < results.rows.length; ++i) {
-          temp.push(results.rows.item(i));
-          students1.push(results.rows.item(i));
-        }
-        setStudents2(temp);
-        // console.log('results=', results);
-        console.log('students2=', students2);
-        console.log('students1=', students1);
-        console.log('temp=', temp);
-      });
-    });
-  };
-
-  const column = (item, k) => {
-    //Формування колонок
-    return (item + '                    ').substr(0, k) + '  ';
-  };
-  const renderStudentList = () => {
-    // console.log('students=', students);
-    return students2.map(item => {
-      return (
-        <Text key={item.id} style={{paddingLeft: 5, color: '#A740CD'}}>
-          {column(item.student_id, 3)}
-          {column(item.student_name, 20)}
-          {column(item.student_phone, 5)}
-          {column(item.student_address, 7)}
-        </Text>
-      );
-    });
+  navigateToViewScreen = () => {
+    navigation.navigate('ViewAllStudentScreen');
   };
 
   return (
     <SafeAreaView style={{flex: 1}}>
       <View style={styles.mainContainer}>
-        <Text style={{fontSize: 20, textAlign: 'center', color: 'red'}}>
-          Data Into SQLite Database
+        <Text style={{fontSize: 24, textAlign: 'center', color: '#000'}}>
+          Insert Data Into SQLite Database
         </Text>
 
         <TextInput
@@ -142,13 +296,24 @@ const App = () => {
         />
 
         <TouchableOpacity style={styles.touchableOpacity} onPress={insertData}>
-          <Text style={styles.touchableOpacityText}>Insert</Text>
+          <Text style={styles.touchableOpacityText}> Insert Data </Text>
         </TouchableOpacity>
-        {renderStudentList()}
+
+        <TouchableOpacity
+          style={[
+            styles.touchableOpacity,
+            {marginTop: 20, backgroundColor: '#33691E'},
+          ]}
+          onPress={navigateToViewScreen}>
+          <Text style={styles.touchableOpacityText}>
+            {' '}
+            View All Students List{' '}
+          </Text>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
-};
+}
 
 const styles = StyleSheet.create({
   mainContainer: {
@@ -163,25 +328,28 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
-    width: '50%',
+    width: '100%',
   },
 
   touchableOpacityText: {
     color: '#FFFFFF',
-    fontSize: 15,
+    fontSize: 23,
     textAlign: 'center',
-    padding: 2,
+    padding: 8,
   },
 
   textInputStyle: {
-    height: 35,
+    height: 45,
     width: '90%',
     textAlign: 'center',
     borderWidth: 1,
     borderColor: '#00B8D4',
     borderRadius: 7,
-    marginTop: 5,
+    marginTop: 15,
+  },
+
+  itemsStyle: {
+    fontSize: 22,
+    color: '#000',
   },
 });
-
-export default App;

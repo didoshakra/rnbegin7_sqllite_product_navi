@@ -9,6 +9,10 @@ import {PersonInfoScreen} from '../screens/person/PersonInfoScreen';
 import ProductScreen from '../screens/product/ProductScreen';
 import StudentScreen from '../screens/student/StudentScreen';
 import StudentListScreen from '../screens/student/StudentListScreen';
+import {
+  ViewAllStudentScreen,
+  EditRecordScreen,
+} from '../screens/student/StudentScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -22,6 +26,13 @@ export const RootNavigator = () => {
       <Stack.Screen name="product" component={ProductScreen} />
       <Stack.Screen name="student" component={StudentScreen} />
       <Stack.Screen name="student-list" component={StudentListScreen} />
+      <Stack.Screen
+        // name="view-student-screen"
+        name="ViewAllStudentScreen"
+        component={ViewAllStudentScreen}
+      />
+
+      <Stack.Screen name="EditRecordScreen" component={EditRecordScreen} />
     </Stack.Navigator>
   );
 };

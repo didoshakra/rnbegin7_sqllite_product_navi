@@ -88,18 +88,20 @@ export default function StudentListScreen() {
   };
 
   return (
-    <View>
-      <Text style={{textAlign: 'center', fontSize: 22, color: 'red'}}>
-        StudentListScreen 1
-      </Text>
-      <Text style={{textAlign: 'center', fontSize: 14, color: 'brown'}}>
-        Data
-      </Text>
-      {renderList()}
-      <Text style={{textAlign: 'center', fontSize: 14, color: 'brown'}}>
-        Students
-      </Text>
-      {renderStudentList()}
-    </View>
+    <SafeAreaView style={{flex: 1}}>
+      <View>
+        <Text style={{textAlign: 'center', fontSize: 22, color: 'red'}}>
+          StudentListScreen 1
+        </Text>
+        <Text style={{textAlign: 'center', fontSize: 14, color: 'brown'}}>
+          Data
+        </Text>
+        {renderList()}
+        <Text style={{textAlign: 'center', fontSize: 14, color: 'brown'}}>
+          Students
+        </Text>
+        {renderStudentList()}
+      </View>
+    </SafeAreaView>
   );
 }
